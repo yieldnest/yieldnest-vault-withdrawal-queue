@@ -93,6 +93,7 @@ contract WithdrawalQueueManager is
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
+    // TODO: just make this 1e18
     uint256 public constant FEE_PRECISION = 1000000;
     uint256 public constant MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
 
@@ -199,6 +200,7 @@ contract WithdrawalQueueManager is
      * @return tokenId The token ID associated with the withdrawal request.
      */
     function requestWithdrawal(uint256 amount, bytes memory data) public nonReentrant returns (uint256 tokenId) {
+        // TODO: introduce a configurable minimum withdrawal amount
         if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
         }
@@ -307,6 +309,8 @@ contract WithdrawalQueueManager is
         pendingRequestedRedemptionAmount -= unitOfAccountAmount;
 
         _burn(tokenId);
+
+        // TODO: deal with this differently - the asset won't be burned here or by this contract, it needs to be forwarded
         redeemableAsset.burn(request.amount);
 
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);

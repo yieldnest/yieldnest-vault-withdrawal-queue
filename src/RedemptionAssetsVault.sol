@@ -57,6 +57,7 @@ contract RedemptionAssetsVault is
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
+    // TODO: generalize these dependencies
     IynEigen public ynEigen;
     IAssetRegistry public assetRegistry;
     bool public paused;
@@ -67,6 +68,8 @@ contract RedemptionAssetsVault is
     constructor() {
         _disableInitializers();
     }
+
+    // TODO: introduce a general way of implementing actions for the RedemptionAssetsVault
 
     // Initializer with Init struct and roles
     struct Init {
@@ -138,6 +141,7 @@ contract RedemptionAssetsVault is
     function deposit(uint256 amount, address asset) external {
         if (!assetRegistry.assetIsSupported(IERC20(asset))) revert AssetNotSupported();
 
+        // TODO: remove internal accounting.
         balances[asset] += amount;
         IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
 
