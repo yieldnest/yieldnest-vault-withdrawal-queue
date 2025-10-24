@@ -1,22 +1,24 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {AccessControlUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
 import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
-import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC721EnumerableUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
+import {ERC721EnumerableUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
 import {SafeCast} from "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(
-        uint256 indexed tokenId,
-        address indexed requester,
-        IWithdrawalQueueManager.WithdrawalRequest request
+        uint256 indexed tokenId, address indexed requester, IWithdrawalQueueManager.WithdrawalRequest request
     );
     event WithdrawalClaimed(
         uint256 indexed tokenId,
@@ -30,7 +32,12 @@ interface IWithdrawalQueueManagerEvents {
     event WithdrawalFeeUpdated(uint256 newFeePercentage);
     event FeeReceiverUpdated(address indexed oldFeeReceiver, address indexed newFeeReceiver);
     event SecondsToFinalizationUpdated(uint256 previousValue, uint256 newValue);
-    event RequestsFinalized(uint256 indexed finalizationIndex, uint256 newFinalizedIndex, uint256 previousFinalizedIndex, uint256 redemptionRate);
+    event RequestsFinalized(
+        uint256 indexed finalizationIndex,
+        uint256 newFinalizedIndex,
+        uint256 previousFinalizedIndex,
+        uint256 redemptionRate
+    );
     event SurplusRedemptionAssetsWithdrawn(uint256 amount, uint256 surplus);
 }
 
@@ -38,10 +45,15 @@ interface IWithdrawalQueueManagerEvents {
  * @title Withdrawal Queue Manager for Redeemable Assets
  * @dev Manages the queue of withdrawal requests for redeemable assets, handling fees, finalization times, and claims.
  * This contract extends ERC721 to represent each withdrawal request as a unique token.
- * 
+ *
  */
-
-contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgradeable, AccessControlUpgradeable, ReentrancyGuardUpgradeable, IWithdrawalQueueManagerEvents {
+contract WithdrawalQueueManager is
+    IWithdrawalQueueManager,
+    ERC721EnumerableUpgradeable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable,
+    IWithdrawalQueueManagerEvents
+{
     using SafeERC20 for IRedeemableAsset;
 
     //--------------------------------------------------------------------------------------
@@ -81,8 +93,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  CONSTANTS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    uint256 constant public FEE_PRECISION = 1000000;
-    uint256 constant public MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
+    uint256 public constant FEE_PRECISION = 1000000;
+    uint256 public constant MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
@@ -125,7 +137,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //--------------------------------------------------------------------------------------
 
     constructor() {
-       _disableInitializers();
+        _disableInitializers();
     }
 
     struct Init {
@@ -139,7 +151,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         uint256 withdrawalFee;
         address feeReceiver;
         address requestFinalizer;
-
     }
 
     function initialize(Init memory init)
@@ -150,8 +161,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         notZeroAddress(address(init.withdrawalQueueAdmin))
         notZeroAddress(address(init.feeReceiver))
         notZeroAddress(address(init.requestFinalizer))
-    
-        initializer {
+        initializer
+    {
         __ERC721_init(init.name, init.symbol);
         redeemableAsset = init.redeemableAsset;
         redemptionAssetsVault = init.redemptionAssetsVault;
@@ -168,7 +179,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //--------------------------------------------------------------------------------------
     //----------------------------------  WITHDRAWAL REQUESTS  -----------------------------
     //--------------------------------------------------------------------------------------
-
 
     /**
      * @notice Requests a withdrawal of a specified amount of redeemable assets without additional data.
@@ -192,7 +202,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         if (amount == 0) {
             revert AmountMustBeGreaterThanZero();
         }
-        
+
         redeemableAsset.safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 currentRate = redemptionAssetsVault.redemptionRate();
@@ -218,22 +228,18 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  CLAIMS  ------------------------------------------
     //--------------------------------------------------------------------------------------
 
-
     /**
      * @notice Claims a withdrawal for a specific token ID and transfers the assets to the specified receiver.
      * @dev This function burns the token representing the withdrawal request and transfers the net amount
-            after fees to the receiver.
+     *         after fees to the receiver.
      *      It also transfers the fee to the fee receiver.
      *      It automatically finds the finalization ID for the given token ID.
      * @param tokenId The ID of the token representing the withdrawal request.
      * @param receiver The address to which the withdrawn assets will be sent.
      */
     function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
-        WithdrawalClaim memory claim = WithdrawalClaim({
-            tokenId: tokenId,
-            receiver: receiver,
-            finalizationId: findFinalizationForTokenId(tokenId)
-        });
+        WithdrawalClaim memory claim =
+            WithdrawalClaim({tokenId: tokenId, receiver: receiver, finalizationId: findFinalizationForTokenId(tokenId)});
         _claimWithdrawal(claim);
     }
 
@@ -251,7 +257,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     }
 
     function _claimWithdrawal(WithdrawalClaim memory claim) internal {
-
         uint256 tokenId = claim.tokenId;
         uint256 finalizationId = claim.finalizationId;
         address receiver = claim.receiver;
@@ -269,7 +274,9 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
         // Check if the token ID is within the finalized range
         if (tokenId < finalization.startIndex || tokenId >= finalization.endIndex) {
-            revert TokenIdNotInFinalizationRange(tokenId, finalizationId, finalization.startIndex, finalization.endIndex);
+            revert TokenIdNotInFinalizationRange(
+                tokenId, finalizationId, finalization.startIndex, finalization.endIndex
+            );
         }
 
         // Update the redemption rate to use the one from the finalization
@@ -291,8 +298,8 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         withdrawalRequests[tokenId].processed = true;
         uint256 redemptionRate = (
             request.redemptionRateAtRequestTime < redemptionRateAtFinalization
-            ? request.redemptionRateAtRequestTime
-            : redemptionRateAtFinalization
+                ? request.redemptionRateAtRequestTime
+                : redemptionRateAtFinalization
         );
 
         uint256 unitOfAccountAmount = calculateRedemptionAmount(request.amount, redemptionRate);
@@ -311,12 +318,14 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
         // Transfer net amount (unitOfAccountAmount - feeAmount) to the receiver
         redemptionAssetsVault.transferRedemptionAssets(receiver, unitOfAccountAmount - feeAmount, request.data);
-        
+
         if (feeAmount > 0) {
             redemptionAssetsVault.transferRedemptionAssets(feeReceiver, feeAmount, request.data);
         }
 
-        emit WithdrawalClaimed(tokenId, msg.sender, receiver, request, finalizationId, unitOfAccountAmount, redemptionRate);
+        emit WithdrawalClaimed(
+            tokenId, msg.sender, receiver, request, finalizationId, unitOfAccountAmount, redemptionRate
+        );
     }
 
     /**
@@ -366,10 +375,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @notice Sets the address where withdrawal fees are sent.
      * @param _feeReceiver The address that will receive the withdrawal fees.
      */
-    function setFeeReceiver(
-        address _feeReceiver
-        ) external notZeroAddress(_feeReceiver) onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE) {
-
+    function setFeeReceiver(address _feeReceiver)
+        external
+        notZeroAddress(_feeReceiver)
+        onlyRole(WITHDRAWAL_QUEUE_ADMIN_ROLE)
+    {
         emit FeeReceiverUpdated(feeReceiver, _feeReceiver);
         feeReceiver = _feeReceiver;
     }
@@ -384,10 +394,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @param redemptionRate The redemption rate expressed in the same unit of decimals as the redeemable asset.
      * @return The calculated redemption amount, adjusted for the decimal places of the redeemable asset.
      */
-    function calculateRedemptionAmount(
-        uint256 amount,
-        uint256 redemptionRate
-    ) public view returns (uint256) {
+    function calculateRedemptionAmount(uint256 amount, uint256 redemptionRate) public view returns (uint256) {
         return amount * redemptionRate / (10 ** redeemableAsset.decimals());
     }
 
@@ -405,7 +412,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
     //----------------------------------  REDEMPTION ASSETS  -------------------------------
     //--------------------------------------------------------------------------------------
 
-    /** 
+    /**
      * @notice Calculates the surplus of redemption assets after accounting for all pending withdrawals.
      * @return surplus The amount of surplus redemption assets in the unit of account.
      */
@@ -413,12 +420,12 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         uint256 availableAmount = redemptionAssetsVault.availableRedemptionAssets();
         if (availableAmount > pendingRequestedRedemptionAmount) {
             return availableAmount - pendingRequestedRedemptionAmount;
-        } 
-        
+        }
+
         return 0;
     }
 
-    /** 
+    /**
      * @notice Calculates the deficit of redemption assets after accounting for all pending withdrawals.
      * @return deficit The amount of deficit redemption assets in the unit of account.
      */
@@ -427,11 +434,11 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         if (pendingRequestedRedemptionAmount > availableAmount) {
             return pendingRequestedRedemptionAmount - availableAmount;
         }
-        
+
         return 0;
     }
 
-    /** 
+    /**
      * @notice Withdraws surplus redemption assets to a specified address.
      */
     function withdrawSurplusRedemptionAssets(uint256 amount) external onlyRole(REDEMPTION_ASSET_WITHDRAWER_ROLE) {
@@ -458,19 +465,18 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
 
     /**
      * @notice Marks all requests whose index is less than lastFinalizedIndex as finalized.
-               The current redemptionRate rated is recorded as the finalization redemption rate.
+     *            The current redemptionRate rated is recorded as the finalization redemption rate.
      * @param _lastFinalizedIndex The index up to which withdrawal requests are considered finalized.
      * @dev A lastFinalizedIndex = 0 means no requests are processed. lastFinalizedIndex = 2 means
-            requests 0 and 1 are processed.
+     *         requests 0 and 1 are processed.
      */
     function finalizeRequestsUpToIndex(uint256 _lastFinalizedIndex)
         external
         onlyRole(REQUEST_FINALIZER_ROLE)
         returns (uint256 finalizationIndex)
     {
-
         uint256 currentRate = redemptionAssetsVault.redemptionRate();
-        
+
         // Create a new Finalization struct
         Finalization memory newFinalization = Finalization({
             startIndex: SafeCast.toUint64(lastFinalizedIndex),
@@ -479,7 +485,7 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         });
 
         finalizationIndex = finalizations.length;
-        
+
         // Add the new Finalization to the array
         finalizations.push(newFinalization);
 
@@ -501,7 +507,6 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
      * @dev The complexity of this algorithm is Math.log2(n) and it is UNBOUNDED
      */
     function findFinalizationForTokenId(uint256 tokenId) public view returns (uint256 finalizationId) {
-
         uint256 finalizationsLength = finalizations.length;
         if (finalizationsLength == 0) {
             revert NotFinalized(tokenId);
@@ -542,7 +547,13 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         }
     }
 
-    function supportsInterface(bytes4 interfaceId) public view virtual override(AccessControlUpgradeable, ERC721EnumerableUpgradeable) returns (bool) {
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        virtual
+        override(AccessControlUpgradeable, ERC721EnumerableUpgradeable)
+        returns (bool)
+    {
         return interfaceId == type(IERC721).interfaceId || super.supportsInterface(interfaceId);
     }
 
@@ -556,16 +567,15 @@ contract WithdrawalQueueManager is IWithdrawalQueueManager, ERC721EnumerableUpgr
         return request.creationTimestamp > 0;
     }
 
-    function withdrawalRequestsForOwner(address owner) public view returns (
-        uint256[] memory withdrawalIndexes,
-        WithdrawalRequest[] memory requests
-    ) {
-
+    function withdrawalRequestsForOwner(address owner)
+        public
+        view
+        returns (uint256[] memory withdrawalIndexes, WithdrawalRequest[] memory requests)
+    {
         uint256 tokenCount = balanceOf(owner);
         if (tokenCount == 0) {
             return (new uint256[](0), new WithdrawalRequest[](0));
         } else {
-            
             withdrawalIndexes = new uint256[](tokenCount);
             requests = new WithdrawalRequest[](tokenCount);
             for (uint256 i = 0; i < tokenCount; i++) {

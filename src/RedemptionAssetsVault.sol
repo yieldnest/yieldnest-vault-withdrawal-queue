@@ -4,14 +4,20 @@ pragma solidity ^0.8.24;
 import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
+import {AccessControlUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from
+    "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
 import {IynEigen} from "src/interfaces/IynEigen.sol";
 import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
 import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
 
-contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessControlUpgradeable, ReentrancyGuardUpgradeable {
-
+contract RedemptionAssetsVault is
+    IRedemptionAssetsVault,
+    Initializable,
+    AccessControlUpgradeable,
+    ReentrancyGuardUpgradeable
+{
     using SafeERC20 for IERC20;
 
     //--------------------------------------------------------------------------------------
@@ -30,6 +36,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     error ContractUnpaused();
     error NotRedeemer(address caller);
     error AssetNotSupported();
+
     event Paused();
     event Unpaused();
 
@@ -75,7 +82,8 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         notZeroAddress(init.redeemer)
         notZeroAddress(address(init.ynEigen))
         notZeroAddress(address(init.assetRegistry))
-        initializer {
+        initializer
+    {
         __AccessControl_init();
         __ReentrancyGuard_init();
         _grantRole(DEFAULT_ADMIN_ROLE, init.admin);
@@ -136,7 +144,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         emit AssetDeposited(asset, msg.sender, amount);
     }
 
-    /** 
+    /**
      * @notice Calculates the current redemption rate of ynETH to ETH.
      * @return The current redemption rate as a uint256.
      */
@@ -144,12 +152,11 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         return ynEigen.previewRedeem(1e18);
     }
 
-    /** 
+    /**
      * @notice Returns the total amount of assets available for redemption.
      * @return _availableRedemptionAssets The available unit-of-account-denominated balance as a uint256.
      */
     function availableRedemptionAssets() public view returns (uint256 _availableRedemptionAssets) {
-
         IERC20[] memory assets = assetRegistry.getAssets();
 
         uint256 len = assets.length;
@@ -160,14 +167,19 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         }
     }
 
-    /** 
+    /**
      * @notice Transfers a specified amount of redemption assets to a given address.
      * @param to The recipient address of the assets.
      * @param amount The amount of assets to transfer.
      * @dev Requires the caller to be the redeemer and the contract to not be paused.
      * @dev Iterates over the supported assets, transferring each asset's balance to the user until fully depleted.
      */
-    function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */) public onlyRedeemer whenNotPaused nonReentrant {
+    function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */ )
+        public
+        onlyRedeemer
+        whenNotPaused
+        nonReentrant
+    {
         uint256 balance = availableRedemptionAssets();
         if (balance < amount) revert InsufficientAssetBalance(ETH_ASSET, amount, balance);
 
@@ -195,7 +207,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         emit TotalAssetsTransferred(ETH_ASSET, msg.sender, to, amountTransferred);
     }
 
-    /** 
+    /**
      * @notice Withdraws a specified amount of redemption assets and processes them through ynETH.
      * @param amount The amount of ETH to withdraw and process.
      * @dev Requires the caller to be the redeemer and the contract to not be paused.
@@ -228,7 +240,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     //----------------------------------  MODIFIERS  ---------------------------------------
     //--------------------------------------------------------------------------------------
 
-    /** 
+    /**
      * @notice Ensure that the given address is not the zero address.
      * @param _address The address to check.
      */
@@ -239,7 +251,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         _;
     }
 
-    /** 
+    /**
      * @notice Checks if the contract is not paused.
      */
     modifier whenNotPaused() {
@@ -263,7 +275,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
     //----------------------------------  PAUSE FUNCTIONS  ---------------------------------
     //--------------------------------------------------------------------------------------
 
-    /** 
+    /**
      * @notice Pauses the contract, preventing certain actions.
      */
     function pause() external onlyRole(PAUSER_ROLE) {
@@ -274,7 +286,7 @@ contract RedemptionAssetsVault is IRedemptionAssetsVault, Initializable, AccessC
         emit Paused();
     }
 
-    /** 
+    /**
      * @notice Unpauses the contract, allowing certain actions.
      */
     function unpause() external onlyRole(UNPAUSER_ROLE) {

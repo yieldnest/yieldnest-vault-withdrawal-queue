@@ -4,9 +4,8 @@ pragma solidity ^0.8.24;
 import "lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IRedemptionAssetsVault {
-
     // Events
-    event AssetsDeposited( address indexed asset, address indexed depositor, uint256 amount);
+    event AssetsDeposited(address indexed asset, address indexed depositor, uint256 amount);
     event AssetTransferred(address indexed asset, address indexed redeemer, address indexed to, uint256 amount);
     event AssetWithdrawn(address indexed asset, address indexed redeemer, address indexed to, uint256 amount);
     event TotalAssetsTransferred(address indexed asset, address indexed from, address indexed to, uint256 amount);
