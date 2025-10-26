@@ -41,6 +41,10 @@ interface IWithdrawalQueueManagerEvents {
     event SurplusRedemptionAssetsWithdrawn(uint256 amount, uint256 surplus);
 }
 
+// TODO: have a way to evaluate how much is due for claiming  at any given time, so that 
+
+// TODO: Consider making a backward compatible version (not in terms of public interface)
+// enough to be able toupgrade current WQMs to this.
 /**
  * @title Withdrawal Queue Manager for Redeemable Assets
  * @dev Manages the queue of withdrawal requests for redeemable assets, handling fees, finalization times, and claims.
@@ -55,6 +59,8 @@ contract WithdrawalQueueManager is
     IWithdrawalQueueManagerEvents
 {
     using SafeERC20 for IRedeemableAsset;
+
+   //TODO: add version of WQM
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -95,6 +101,7 @@ contract WithdrawalQueueManager is
 
     // TODO: just make this 1e18
     uint256 public constant FEE_PRECISION = 1000000;
+    // TODO: this is unused
     uint256 public constant MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
 
     //--------------------------------------------------------------------------------------
@@ -442,6 +449,7 @@ contract WithdrawalQueueManager is
         return 0;
     }
 
+    // TODO: should not be needed anymore
     /**
      * @notice Withdraws surplus redemption assets to a specified address.
      */
