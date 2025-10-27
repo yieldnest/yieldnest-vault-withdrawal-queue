@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {Initializable} from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
-import {AccessControlUpgradeable} from
+import { SafeERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { IERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import { Initializable } from "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol";
+import { AccessControlUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from
+import { ReentrancyGuardUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
-import {IynEigen} from "src/interfaces/IynEigen.sol";
-import {IAssetRegistry} from "src/interfaces/IAssetRegistry.sol";
-import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
+import { IynEigen } from "src/interfaces/IynEigen.sol";
+import { IAssetRegistry } from "src/interfaces/IAssetRegistry.sol";
+import { IRedemptionAssetsVault } from "src/interfaces/IRedemptionAssetsVault.sol";
 
 contract RedemptionAssetsVault is
     IRedemptionAssetsVault,
@@ -178,7 +178,11 @@ contract RedemptionAssetsVault is
      * @dev Requires the caller to be the redeemer and the contract to not be paused.
      * @dev Iterates over the supported assets, transferring each asset's balance to the user until fully depleted.
      */
-    function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */ )
+    function transferRedemptionAssets(
+        address to,
+        uint256 amount,
+        bytes calldata /* data */
+    )
         public
         onlyRedeemer
         whenNotPaused

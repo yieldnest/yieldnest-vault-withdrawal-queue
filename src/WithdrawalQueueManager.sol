@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: BSD 3-Clause License
 pragma solidity ^0.8.24;
 
-import {AccessControlUpgradeable} from
+import { AccessControlUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {IWithdrawalQueueManager} from "src/interfaces/IWithdrawalQueueManager.sol";
-import {AccessControlUpgradeable} from
+import { IWithdrawalQueueManager } from "src/interfaces/IWithdrawalQueueManager.sol";
+import { AccessControlUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/access/AccessControlUpgradeable.sol";
-import {ReentrancyGuardUpgradeable} from
+import { ReentrancyGuardUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/utils/ReentrancyGuardUpgradeable.sol";
-import {IRedeemableAsset} from "src/interfaces/IRedeemableAsset.sol";
-import {IRedemptionAssetsVault} from "src/interfaces/IRedemptionAssetsVault.sol";
-import {SafeERC20} from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ERC721EnumerableUpgradeable} from
+import { IRedeemableAsset } from "src/interfaces/IRedeemableAsset.sol";
+import { IRedemptionAssetsVault } from "src/interfaces/IRedemptionAssetsVault.sol";
+import { SafeERC20 } from "lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC721EnumerableUpgradeable } from
     "lib/openzeppelin-contracts-upgradeable/contracts/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import {IERC721} from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
-import {SafeCast} from "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
+import { IERC721 } from "lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol";
+import { SafeCast } from "lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol";
 
 interface IWithdrawalQueueManagerEvents {
     event WithdrawalRequested(
@@ -41,7 +41,21 @@ interface IWithdrawalQueueManagerEvents {
     event SurplusRedemptionAssetsWithdrawn(uint256 amount, uint256 surplus);
 }
 
-// TODO: have a way to evaluate how much is due for claiming  at any given time, so that 
+/*
+
+- The WithdrawalQueueManager (WQM) returns shares in a vault,
+  such as a BaseStrategy.sol instance. This vault holds a
+  diversified basket of assets available for redemption.
+- Provide a standard mechanism for redeeming shares for underlying
+  assets. By default, implement a loop or mechanism to claim assets
+  proportionally from the vault according to pre-defined redemption
+  logic.
+- Ensure the redemption strategy is modular, allowing for customized
+  logic if needed, but default logic should fetch and distribute
+  assets based on the vault’s basket.
+*/
+
+// TODO: have a way to evaluate how much is due for claiming  at any given time, so that
 
 // TODO: Consider making a backward compatible version (not in terms of public interface)
 // enough to be able toupgrade current WQMs to this.
@@ -60,7 +74,7 @@ contract WithdrawalQueueManager is
 {
     using SafeERC20 for IRedeemableAsset;
 
-   //TODO: add version of WQM
+    //TODO: add version of WQM
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  ERRORS  -------------------------------------------
@@ -100,13 +114,15 @@ contract WithdrawalQueueManager is
     //--------------------------------------------------------------------------------------
 
     // TODO: just make this 1e18
-    uint256 public constant FEE_PRECISION = 1000000;
+    uint256 public constant FEE_PRECISION = 1_000_000;
     // TODO: this is unused
     uint256 public constant MAX_SECONDS_TO_FINALIZATION = 3600 * 24 * 28; // 4 weeks
 
     //--------------------------------------------------------------------------------------
     //----------------------------------  VARIABLES  ---------------------------------------
     //--------------------------------------------------------------------------------------
+
+    // TODO: use erc7201
 
     /// @notice The asset that can be redeemed through withdrawal requests.
     IRedeemableAsset public redeemableAsset;
@@ -180,6 +196,8 @@ contract WithdrawalQueueManager is
         _grantRole(REDEMPTION_ASSET_WITHDRAWER_ROLE, init.redemptionAssetWithdrawer);
         _grantRole(REQUEST_FINALIZER_ROLE, init.requestFinalizer);
 
+        // TODO; include the ability to run the approval for redeemable asset towards redeemer
+
         withdrawalFee = init.withdrawalFee;
         feeReceiver = init.feeReceiver;
     }
@@ -200,7 +218,8 @@ contract WithdrawalQueueManager is
 
     /**
      * @notice Requests a withdrawal of a specified amount of redeemable assets.
-     * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal request,
+     * @dev Transfers the specified amount of redeemable assets from the sender to this contract, creates a withdrawal
+     * request,
      *      and mints a token representing this request. Emits a WithdrawalRequested event upon success.
      * @param amount The amount of redeemable assets to withdraw.
      * @param data Extra data payload associated with the request
@@ -247,14 +266,19 @@ contract WithdrawalQueueManager is
      * @param receiver The address to which the withdrawn assets will be sent.
      */
     function claimWithdrawal(uint256 tokenId, address receiver) public nonReentrant {
-        WithdrawalClaim memory claim =
-            WithdrawalClaim({tokenId: tokenId, receiver: receiver, finalizationId: findFinalizationForTokenId(tokenId)});
+        WithdrawalClaim memory claim = WithdrawalClaim({
+            tokenId: tokenId,
+            receiver: receiver,
+            finalizationId: findFinalizationForTokenId(tokenId)
+        });
         _claimWithdrawal(claim);
     }
 
     /**
-     * @notice Claims a withdrawal by transferring the requested assets to the specified receiver, less any applicable fees.
-     * @dev This function burns the token representing the withdrawal request and transfers the net amount after fees to the receiver.
+     * @notice Claims a withdrawal by transferring the requested assets to the specified receiver, less any applicable
+     * fees.
+     * @dev This function burns the token representing the withdrawal request and transfers the net amount after fees to
+     * the receiver.
      *      It also transfers the fee to the fee receiver.
      * @param claim The claim struct contains:
      *        the tokenId The ID of the token representing the withdrawal request,
@@ -317,7 +341,9 @@ contract WithdrawalQueueManager is
 
         _burn(tokenId);
 
-        // TODO: deal with this differently - the asset won't be burned here or by this contract, it needs to be forwarded
+        // TODO: deal with this differently - the asset won't be burned here or by this contract, it needs to be
+        // forwarded
+        // How can you make this compatible with the old WQM?
         redeemableAsset.burn(request.amount);
 
         uint256 feeAmount = calculateFee(unitOfAccountAmount, request.feeAtRequestTime);
@@ -400,7 +426,8 @@ contract WithdrawalQueueManager is
     //--------------------------------------------------------------------------------------
 
     /**
-     * @notice Calculates the redemption amount based on the provided amount and the redemption rate at the time of request.
+     * @notice Calculates the redemption amount based on the provided amount and the redemption rate at the time of
+     * request.
      * @param amount The amount of the redeemable asset.
      * @param redemptionRate The redemption rate expressed in the same unit of decimals as the redeemable asset.
      * @return The calculated redemption amount, adjusted for the decimal places of the redeemable asset.
