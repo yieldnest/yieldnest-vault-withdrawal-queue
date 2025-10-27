@@ -67,24 +67,63 @@ contract MaxVaultRedeemer is IRedemptionAssetsVault {
      *      If there are shares left at the end, reverts.
      */
     function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */ ) external override {
-        uint256 sharesLeft = IVault(address(redemptionVault)).convertToShares(amount);
+        (PreviewRedemption[] memory redemptions, uint256 sharesLeft) = this.previewTransferRedemptionAssets(amount);
+
         uint256 assetCount = redeemableAssets.length;
-
-        for (uint256 i = 0; i < assetCount && sharesLeft > 0; ++i) {
-            address assetAddress = redeemableAssets[i];
-            uint256 maxRedeem = redemptionVault.maxRedeemAsset(assetAddress, address(this));
-
-            uint256 sharesToRedeem = sharesLeft < maxRedeem ? sharesLeft : maxRedeem;
+        for (uint256 i = 0; i < assetCount; ++i) {
+            uint256 sharesToRedeem = redemptions[i].sharesRedeemed;
+            address assetAddress = redemptions[i].asset;
             if (sharesToRedeem == 0) continue;
 
             // Redeem sharesToRedeem shares for assetAddress, sent to 'to'
             redemptionVault.redeemAsset(assetAddress, sharesToRedeem, to, address(this));
-
-            sharesLeft -= sharesToRedeem;
         }
 
         if (sharesLeft > 0) {
             revert NotEnoughLiquidityToFulfillRedemption();
+        }
+    }
+
+    struct PreviewRedemption {
+        address asset;
+        uint256 sharesRedeemed;
+        uint256 assetsRedeemable;
+    }
+
+    /**
+     * @notice Previews how many shares of each redeemable asset would be redeemed for a given redemption amount,
+     *         following the prioritized list of redeemableAssets. Does not modify state.
+     * @param amount The total amount of underlying assets to redeem.
+     * @return redemptions An array of PreviewRedemption structs for each asset in redeemableAssets order.
+     */
+    function previewTransferRedemptionAssets(uint256 amount)
+        external
+        view
+        returns (PreviewRedemption[] memory redemptions, uint256 sharesLeft)
+    {
+        sharesLeft = IVault(address(redemptionVault)).convertToShares(amount);
+        uint256 assetCount = redeemableAssets.length;
+        redemptions = new PreviewRedemption[](assetCount);
+
+        for (uint256 i = 0; i < assetCount; ++i) {
+            if (sharesLeft > 0) {
+                address assetAddress = redeemableAssets[i];
+                uint256 maxRedeem = redemptionVault.maxRedeemAsset(assetAddress, address(this));
+
+                uint256 sharesToRedeem = sharesLeft < maxRedeem ? sharesLeft : maxRedeem;
+                uint256 assetsRedeemable = redemptionVault.previewRedeemAsset(assetAddress, sharesToRedeem);
+
+                redemptions[i] = PreviewRedemption({
+                    asset: assetAddress,
+                    sharesRedeemed: sharesToRedeem,
+                    assetsRedeemable: assetsRedeemable
+                });
+
+                sharesLeft -= sharesToRedeem;
+            } else {
+                redemptions[i] =
+                    PreviewRedemption({ asset: redeemableAssets[i], sharesRedeemed: 0, assetsRedeemable: 0 });
+            }
         }
     }
 
