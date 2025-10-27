@@ -16,21 +16,54 @@ contract MaxVaultRedeemer is IRedemptionAssetsVault {
     IVault public immutable vault;
     address public immutable asset;
 
-    address[] redeemableAssets;
+    address[] public redeemableAssets;
+    address public owner;
 
-    constructor(address _redemptionVault, address _vault, address _asset) {
+    error NotOwner();
+    error InvalidAsset(address asset);
+
+    modifier onlyOwner() {
+        if (msg.sender != owner) revert NotOwner();
+        _;
+    }
+
+    constructor(
+        address _redemptionVault,
+        address _vault,
+        address _asset,
+        address[] memory _redeemableAssets,
+        address _owner
+    ) {
         if (_redemptionVault == address(0)) revert ZeroVault();
         if (_vault == address(0)) revert ZeroVault();
         if (_asset == address(0)) revert ZeroAsset();
+        if (_owner == address(0)) revert NotOwner();
         redemptionVault = IBaseStrategy(_redemptionVault);
         vault = IVault(_vault);
         asset = _asset;
+        owner = _owner;
+        setRedeemableAssets(_redeemableAssets);
+    }
+
+    /**
+     * @notice Sets the list of redeemable assets. Permissioned, owner only. Each asset must be a valid asset for both
+     * vault and redemptionVault.
+     * @param _redeemableAssets Array of asset addresses to set as redeemable.
+     */
+    function setRedeemableAssets(address[] memory _redeemableAssets) public onlyOwner {
+        delete redeemableAssets;
+        for (uint256 i = 0; i < _redeemableAssets.length; ++i) {
+            address asset_ = _redeemableAssets[i];
+            if (!vault.hasAsset(asset_) || !IVault(address(redemptionVault)).hasAsset(asset_)) {
+                revert InvalidAsset(asset_);
+            }
+            redeemableAssets.push(asset_);
+        }
     }
 
     /**
      * @notice Transfers redemption assets for a given amount using a prioritized list of redeemable assets.
-     * @dev Assumes `data` is an abi-encoded address[] called redeemableAssets.
-     *      Goes through the redeemableAssets in order and redeems as many shares as can for each asset.
+     * @dev Goes through the redeemableAssets in order and redeems as many shares as can for each asset.
      *      If there are shares left at the end, reverts.
      */
     function transferRedemptionAssets(address to, uint256 amount, bytes calldata /* data */ ) external override {
@@ -44,8 +77,7 @@ contract MaxVaultRedeemer is IRedemptionAssetsVault {
             uint256 sharesToRedeem = sharesLeft < maxRedeem ? sharesLeft : maxRedeem;
             if (sharesToRedeem == 0) continue;
 
-            // Redeem redeemAmount shares for assetAddress, sent to 'to'
-            // Assume that the redemptionVault supports redeemAsset and assetAddress is valid
+            // Redeem sharesToRedeem shares for assetAddress, sent to 'to'
             redemptionVault.redeemAsset(assetAddress, sharesToRedeem, to, address(this));
 
             sharesLeft -= sharesToRedeem;
